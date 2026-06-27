@@ -1,8 +1,12 @@
 use postgres::{Client, NoTls, Error};
 use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
+use futures_util::StreamExt;
+use anyhow::Result;
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use rustls::crypto::ring;
 
-
+/*
 #[derive(Debug)]
 struct Trade {
     id: i64,
@@ -13,37 +17,39 @@ struct Trade {
     quantity: Decimal,
     side: Option<String>,
 }
+*/
 
-fn main() -> Result<(), Error> {
-    println!("Hello, world!");
 
-    let mut client = Client::connect("postgres://postgres:postgres@localhost:4545/market", NoTls)?;
+#[tokio::main]
+async fn main() -> Result<()> {
+    ring::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
-    client.execute("INSERT INTO trades (exchange, symbol, event_time, price, quantity, side)
-        VALUES ($1, $2, $3, $4, $5, $6)", 
-            &[
-                &String::from("hyperliquid"), 
-                &String::from("HYPEUSDT"), 
-                &chrono::offset::Utc::now(), 
-                &Decimal::new(635, 1), 
-                &Decimal::new(1, 1), 
-                &String::from("Buy"),
-        ],
-    )?;
+    let url = "wss://fstream.binance.com/market/ws/btcusdt@aggTrade";
 
-    for row in client.query("SELECT id, exchange, symbol, event_time, price, quantity, side FROM trades", &[])? {
-        let trade = Trade {
-            id: row.get("id"),
-            exchange: row.get("exchange"),
-            symbol: row.get("symbol"),
-            event_time: row.get("event_time"),
-            price: row.get("price"),
-            quantity: row.get("quantity"),
-            side: row.get("side")
-        };
-        println!("{:?}", trade);
+    // WebSocket connection
+    let (websocket, _) = connect_async(url).await.expect("Failed to connect");
 
+    println!("WebSocket connected");
+
+    let (_, mut reader) = websocket.split();
+
+    while let Some(msg) = reader.next().await {
+        match msg {
+            Ok(msg) => {
+                if let Ok(text) = msg.to_text() {
+                    println!("{}", text);
+                }
+            }
+            Err(e) => {
+                eprintln!("Error occured trade WebSocket: {}", e);
+                break;
+            }
+        }
     }
+
+
 
     Ok(())
 }
