@@ -1,0 +1,9 @@
+[package]
+name = "new-market-ingestion"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+postgres = { version="0.19.14", features=["with-chrono-0_4"]}
+chrono = "0.4.45"
+rust_decimal = { version="1.42", features=["db-postgres"]}
