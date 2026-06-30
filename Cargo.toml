@@ -19,4 +19,5 @@ futures-util = "0.3.32"
 csv = "1.4.0"
 exitfailure = "0.5.1"
 reqwest = { version = "0.13.4", features = ["json"]}
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"]}
 
